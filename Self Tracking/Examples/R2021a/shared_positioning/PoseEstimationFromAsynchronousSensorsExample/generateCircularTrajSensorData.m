@@ -48,10 +48,10 @@ imu.Magnetometer.NoiseDensity = 0.1/ sqrt(50);
 %% GPS Simulation
 gps = gpsSensor('UpdateRate', gpsFs);
 gps.ReferenceLocation = refloc;     
-gps.DecayFactor = 0.5;              
-gps.HorizontalPositionAccuracy = 1.6;   
-gps.VerticalPositionAccuracy =  1.6;
-gps.VelocityAccuracy = 0.1;           
+gps.DecayFactor = 0.5;              % GPS訊號衰減因子
+gps.HorizontalPositionAccuracy = 1.6;   % 水平精度
+gps.VerticalPositionAccuracy =  1.6;    % 垂直精度
+gps.VelocityAccuracy = 0.1;           % 速度精度
 
 [llaGPSRate, gpsvelGPSRate] = gps( trajPos(1:ratio:end,:), ...
     trajVel(1:ratio:end, :)); %#ok<BDSCI>
@@ -68,16 +68,16 @@ function trajData = circleTraj(fs)
 % Generate a circular motion trajectory
 
 N = 10000; 
-r = 10; % (m)
-speed = 2.50; % (m/s)
+r = 100; % (m)
+speed = 25; % (m/s)
 center = [0, 0]; % (m)
 initialYaw = 90; % (degrees)
-numRevs = 10;
+numRevs = 3; % 跑?圈
 
 % Define angles theta and corresponding times of arrival t.
-revTime = 2*pi*r / speed;
-theta = (0:pi/2:2*pi*numRevs).';
-t = linspace(0, revTime*numRevs, numel(theta)).';
+revTime = 2*pi*r / speed; % 一圈要跑的時間
+theta = (0:pi/2:2*pi*numRevs).';  % 總共要運行的圈數(角度)
+t = linspace(0, revTime*numRevs, numel(theta)).'; % 運行時間
 
 % Define position.
 x = r .* cos(theta) + center(1);

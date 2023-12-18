@@ -39,7 +39,7 @@ fusionfilt.AngularVelocityNoise = 100;
 fusionfilt.AccelerationNoise = 100;
 fusionfilt.MagnetometerBiasNoise = 1e-7;
 fusionfilt.AccelerometerBiasNoise = 1e-7;
-fusionfilt.GyroscopeBiasNoise = 1e-7;       % 設定噪音
+fusionfilt.GyroscopeBiasNoise = 1e-7;       % 設定process noise
 
 Rmag = 0.4;
 Rvel = 0.01;
@@ -53,12 +53,13 @@ useErrScope = true; % Turn on the streaming error plot.
 usePoseView = true; % Turn on the 3D pose viewer.
 if usePoseView
     posescope = PoseViewerWithSwitches(...
-        'XPositionLimits', [-30 30], ...
-        'YPositionLimits', [-30, 30], ...
+        'XPositionLimits', [-1010 1010], ...
+        'YPositionLimits', [-1010, 1010], ...
         'ZPositionLimits', [-10 10]);
 end
 f = gcf;
 
+% 計算error
 if useErrScope
     errscope = HelperScrollingPlotter(...
         'NumInputs', 4, ...
@@ -78,6 +79,8 @@ if useErrScope
         -2 2
         -2 2]);
 end
+
+maxPosError = 0;
 
 for ii=1:size(accel,1)
     fusionfilt.predict(1./Fs);
@@ -108,7 +111,13 @@ for ii=1:size(accel,1)
         fusionfilt.fusegps(lla(ii,:), Rpos, gpsvel(ii,:), Rvel);
     end
 
-    % Plot the pose error
+    % 計算當前時刻的位置誤差
+    posErr = p - trajPos(ii,:);
+
+    % 更新最大位置誤差
+    maxPosError = max(maxPosError, norm(posErr));
+
+    % Plot the pose error (圖像結果)
     [p,q] = pose(fusionfilt);
     posescope(p, q, trajPos(ii,:), trajOrient(ii));
 
