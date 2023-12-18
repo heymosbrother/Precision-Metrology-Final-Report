@@ -1,13 +1,15 @@
 function output = gpsdata(input)
     % 單位m
-    output(1) = input(1) + random('Normal', 0, 5);
-    output(2) = input(2) + random('Normal', 0, 5);
+    x_m = input(1) + random('Normal', 0, 5);
+    y_m = input(2) + random('Normal', 0, 5);
+    output = [x_m y_m];
 end
 
 function output = acceldata(a)
     % 單位m/s^2 a=v^2/r
-    output(1) = random('Normal', 0, 19.6);
-    output(2) = a + random('Normal', 0, 19.6);
+    x_m = random('Normal', 0, 19.6);
+    y_m = a + random('Normal', 0, 19.6);
+    output = [x_m y_m];
 end
 
 function output = gyrodata(input)
