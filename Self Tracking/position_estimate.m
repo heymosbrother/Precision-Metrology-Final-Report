@@ -16,7 +16,7 @@ function [data_k, K, previous, previous_esterr] = positionfusion(data_t, K, prev
                   0 0 0 1 0 0 0;
                   0 0 0 0 1 dt 0.5*dt^2;
                   0 0 0 0 0 1 dt;
-                  0 0 0 0 0 0 1 ];
+                  0 0 0 0 0 0 1 ];          % transition matrix for kalman filter
     data_e = transition*measure;
 %     initial = [1000; 14; 0; 0; 0; 14^2/1000];
     initial_esterr = [1; 1; 1; 1; 1; 1; 1];

@@ -68,8 +68,8 @@ function trajData = circleTraj(fs)
 % Generate a circular motion trajectory
 
 N = 10000; 
-r = 100; % (m)
-speed = 25; % (m/s)
+r = 500; % (m)
+speed = 20; % (m/s)
 center = [0, 0]; % (m)
 initialYaw = 90; % (degrees)
 numRevs = 3; % 跑?圈
