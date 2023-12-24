@@ -1,0 +1,215 @@
+clear; clc; close all;
+
+%% The Tesing Field
+% Our vehicle will run with a velocity on a round track with a designated radius
+
+%%% The track
+R_track = 500; % 1000 meters
+
+%%% Simulation configuration
+simTime = 120; % seconds
+delta_t = 0.01; % time
+t = 0:delta_t:simTime;
+simulationSpeed = 3; % play the animation in 2x speed
+
+%%% The vehicle
+V_car = 28; % m/s, instantaneous velocity, aka tangent velocity
+T_car = 2*pi*R_track/V_car; % time spent to drive one round
+F_car = 1/T_car;
+% time; x position; y position; pose (angle between X_car & X_world)
+Pos_car = [t; R_track*cos(2*pi*F_car.*t); R_track*sin(2*pi*F_car.*t); 2*pi*F_car.*t + pi/2];
+
+%% Position_estimate
+Pos_est = zeros(size(Pos_car));
+delta_t_sample = 0.05;    % 採樣頻率
+t_sample = 0;   % 採樣時間
+j = 1;
+% sensor data
+for i = 1:120/delta_t_sample
+    x = Pos_car( 2, j);
+    y = Pos_car( 3, j);
+    q = Pos_car( 4, j);
+    position_est = positionfusion(x, y, q, i);
+    pose_est = posefusion(q,i);
+    Pos_est(2,j) = position_est(2);
+    Pos_est(3,j) = position_est(3);
+    Pos_est(4,j) = pose_est;
+    Pos_est(1,j) = Pos_car(1, j);
+    j = j + delta_t_sample / delta_t;
+end
+
+
+%% Plotting
+figure('Position', [10 100 800 800]);
+% Plot the true trajectory
+plot(Pos_car(2,:), Pos_car(3,:), '--','LineWidth', 1); hold on;
+
+%%% Plot Configurations
+axis equal;
+xlim([0 R_track*1.1]); ylim([0 R_track*1.1]);
+grid on; grid minor;
+xlabel('x [m]', 'Interpreter','latex','FontSize',12);
+ylabel('y [m]', 'Interpreter','latex','FontSize',12);
+title('Simulation', 'Interpreter','latex','FontSize',14);
+% legend('True Trajectory', ...
+%        'True Position', ...
+%        'True Direction', ...
+%        'Interpreter','latex','FontSize',12, 'Location', 'southwest');
+
+%%% Animation_true
+% Position
+Pos_car_plot = [Pos_car(2, 1); Pos_car(3, 1)];
+h_car = plot(Pos_car_plot(1), Pos_car_plot(2), 'bo', 'MarkerSize', 10, 'MarkerFaceColor', 'b');
+% Pose
+arrowLength = 40;
+arrowEnd = Pos_car_plot + arrowLength * [cos(Pos_car(4, 1)); sin(Pos_car(4, 1))];
+h_arrow = quiver(Pos_car_plot(1), Pos_car_plot(2), ...
+                 arrowLength*cos(Pos_car(4, 1)), arrowLength*sin(Pos_car(4, 1)), ...
+                 'LineWidth', 2, 'MaxHeadSize', 4, 'color',[0 0 1]);
+
+%%% Animation_estimation
+% Position
+Pos_est_plot = [Pos_est(2, 1); Pos_est(3, 1)];
+h_car_est = plot(Pos_est_plot(1), Pos_est_plot(2), 'ro', 'MarkerSize', 10, 'MarkerFaceColor', 'r');
+% Pose
+arrowEnd_est = Pos_est_plot + arrowLength * [cos(Pos_est(4, 1)); sin(Pos_est(4, 1))];
+h_arrow_est = quiver(Pos_est_plot(1), Pos_est_plot(2), ...
+                 arrowLength*cos(Pos_est(4, 1)), arrowLength*sin(Pos_est(4, 1)), ...
+                 'LineWidth', 2, 'MaxHeadSize', 4, 'color',[1 0 0]);
+Max_err = 0;
+
+% Drawing
+for i = 2:length(t)-1
+    Pos_car_plot = [Pos_car(2, i); Pos_car(3, i)];
+    arrowEnd = Pos_car_plot + arrowLength * [cos(Pos_car(4, i)); sin(Pos_car(4, i))];
+    % Update car position and arrow direction
+    set(h_car, 'XData', Pos_car_plot(1), 'YData', Pos_car_plot(2));
+    set(h_arrow, 'XData', Pos_car_plot(1), 'YData', Pos_car_plot(2), ...
+        'UData', arrowEnd(1) - Pos_car_plot(1), 'VData', arrowEnd(2) - Pos_car_plot(2));
+    if Pos_est(1,i) ~= 0
+        Pos_est_plot = [Pos_est(2, i); Pos_est(3, i)];
+        arrowEnd_est = Pos_est_plot + arrowLength * [cos(Pos_est(4, i)); sin(Pos_est(4, i))];
+        set(h_car_est, 'XData', Pos_est_plot(1), 'YData', Pos_est_plot(2));
+        set(h_arrow_est, 'XData', Pos_est_plot(1), 'YData', Pos_est_plot(2), ...
+            'UData', arrowEnd_est(1) - Pos_est_plot(1), 'VData', arrowEnd_est(2) - Pos_est_plot(2));
+        scatter(Pos_est(2, i), Pos_est(3, i),'red', 'x');
+
+        error = []
+%         error_x = abs(Pos_car(2,i)-Pos_est(2,i));
+%         error_y = abs(Pos_car(3,i)-Pos_est(3,i));
+%         if error_x>Max_err
+%             Max_err = error_x;
+%         end
+%         if error_y>Max_err
+%             Max_err = error_y;
+%         end
+    end
+    pause(delta_t/simulationSpeed);
+    drawnow;
+end
+
+
+%%% Functions
+%% sensors
+function [x_m, y_m] = gpsdata(x_t, y_t)
+    % 單位m
+    x_m = x_t + random('Normal', 0, 5/0.4938);
+    y_m = y_t + random('Normal', 0, 5/0.4938);
+end
+
+function [xdd_m, ydd_m] = acceldata(a)
+    % 單位m/s^2 a=v^2/r
+    xdd_m = random('Normal', 0, 19.6/0.4938);
+    ydd_m = a + random('Normal', 0, 19.6/0.4938);
+end
+
+function output = gyrodata(input)
+    % 單位deg/s input = 角速度
+    output = input + random('Normal', 0, 125/0.4938);
+end
+
+function output = magdata(input)
+    % 單位uT 測量範圍0~3000 初始為南北向為最大值3000
+    output = input + random('Normal', 0, (0.75/0.4938/3000)*2*pi);
+end
+
+%% filter
+function [p_est] = positionfusion(x,y,q, i)
+    % Kalman filter
+    global previous_esterr_position;
+    global previous_x;
+    global previous_y;
+    dt = 0.05; % 採樣頻率 s
+    [a1,b1] = acceldata(28^2/500);
+    a_x = sin(q) * a1;
+    a_y = cos(q) * b1;
+    v_x = cos(q) * 28;
+    v_y = sin(q) * 28;
+    [a2, b2] = gpsdata(x, y);
+    p_x = a2;
+    p_y = b2;
+    measure = [p_x; v_x; a_x; p_y; v_y; a_y];
+    transition = [1 dt 0.5*dt^2 0 0 0;
+                  0 1 dt 0 0 0;
+                  0 0 1 0 0 0;
+                  0 0 0 1 dt 0.5*dt^2;
+                  0 0 0 0 1 dt;
+                  0 0 0 0 0 1 ];
+    data_e = transition * measure;
+    x_est = data_e(1);
+    y_est = data_e(4);
+
+    % Kalman Gain
+    if i == 1
+        K = 1;
+    else
+        K = previous_esterr_position / (previous_esterr_position + (5/0.4938)^2);
+    end
+
+    % 更新估計值和估計誤差
+    if i == 1
+        x_pre = x_est;
+        y_pre = y_est;
+        previous_esterr_position = (1 - K) * (5/0.4938)^2;
+    else
+        x_pre = previous_x + K .* (p_x - previous_x);
+        y_pre = previous_y + K .* (p_y - previous_y);
+        previous_esterr_position = (1 - K) * abs(previous_x - p_x);
+    end
+    p_est = [i * dt, x_pre, y_pre];
+    previous_x = x_est;
+    previous_y = y_est;
+end
+
+function [p_est] = posefusion(q, i)
+    % Kalman filter
+    global previous_esterr;
+    global previous_q;
+    dt = 0.05; % 採樣頻率 s
+    theta = magdata(q);
+    omega = gyrodata(28/500);
+    measure = [theta; omega];
+    transition = [1 dt
+                  0 1];
+    data_e = transition * measure;
+    q_est = data_e(1);
+
+    % Kalman Gain
+    if i == 1
+        K = 1;
+    else
+        K = previous_esterr / (previous_esterr + (5/0.4938)^2);
+    end
+
+    % 更新估計值和估計誤差
+    if i == 1
+        q_pre = q_est;
+        previous_esterr = (1 - K) * (5/0.4938)^2;
+    else
+        q_pre = previous_q + K .* (theta - previous_q);
+        previous_esterr = (1 - K) * abs(previous_q - theta );
+    end
+    p_est = q_pre;
+    previous_q = q_est;
+end
+

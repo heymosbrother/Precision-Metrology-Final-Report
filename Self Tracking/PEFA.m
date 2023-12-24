@@ -80,7 +80,10 @@ if useErrScope
         -2 2]);
 end
 
-maxPosError = 0;
+% Add these lines before the loop to initialize matrices for recording errors
+numSamples = size(accel, 1);
+quatDistances = zeros(numSamples, 1);
+positionErrors = zeros(numSamples, 3);
 
 for ii=1:size(accel,1)
     fusionfilt.predict(1./Fs);
@@ -111,12 +114,10 @@ for ii=1:size(accel,1)
         fusionfilt.fusegps(lla(ii,:), Rpos, gpsvel(ii,:), Rvel);
     end
 
-    % 計算當前時刻的位置誤差
-    posErr = p - trajPos(ii,:);
-
-    % 更新最大位置誤差
-    maxPosError = max(maxPosError, norm(posErr));
-
+    % Record quaternion distance and position error
+    quatDistances(ii) = rad2deg(dist(q, trajOrient(ii)));
+    positionErrors(ii, :) = p - trajPos(ii, :);
+    
     % Plot the pose error (圖像結果)
     [p,q] = pose(fusionfilt);
     posescope(p, q, trajPos(ii,:), trajOrient(ii));
